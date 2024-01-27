@@ -1,6 +1,7 @@
 from django.shortcuts import render
 
 from . import util
+from django import forms
 
 
 def index(request):
@@ -9,9 +10,9 @@ def index(request):
     })
 
 
-def entry(request, title):
-    return render(request, "encyclopedia/entry.html", {
-        "title": title,
-        "body": util.get_entry(title)
+def entry_page(request, result):
+    return render(request, "encyclopedia/entry_page.html", {
+        "title": result,
+        "body": util.get_entry(result)
     })
 
