@@ -138,4 +138,13 @@ def error_page(request, error_message):
         "error": error_message
     })
 
+
+def random_entry(request):
+
+    entries = util.list_entries()
+    random_entry = random.choice(entries)
+    return entry_page(request, random_entry)
+
+    
+
                   

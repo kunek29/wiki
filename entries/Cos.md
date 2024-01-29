@@ -1,1 +1,0 @@
-Albo i ok
