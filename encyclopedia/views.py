@@ -5,6 +5,7 @@ from django import forms
 from django.urls import reverse
 from django.http import HttpResponseRedirect
 import random
+from markdown2 import Markdown
 
 
 class CreateEntryForm(forms.Form):
@@ -25,21 +26,29 @@ def index(request):
 
 def entry_page(request, title):
     
+    # If clicked Edit, render edit_page.
     if request.method == "POST":
+        body = util.get_entry(title)
 
         return render(request, "encyclopedia/edit_page.html", {
             "title": title,
             "form": ExistingEntryForm(request.POST)
         })
-            
+    # Render entry page  
+    markdowner = Markdown()
+    body = util.get_entry(title)
+    body_converted = markdowner.convert(body)
+         
     return render(request, "encyclopedia/entry_page.html", {
         "title": title,
-        "body": util.get_entry(title)
+        "body_converted": body_converted,
+        "body": body
     })
 
 
 def edit_page(request):
 
+    # If clicked Save button, save the entry and go to entry page.
     if request.method == "POST":
         form = ExistingEntryForm(request.POST)
 
@@ -47,16 +56,25 @@ def edit_page(request):
             title = form.cleaned_data["title"]
             body = form.cleaned_data["body"]
             util.save_entry(title, body)
+
+            markdowner = Markdown()
+            body = util.get_entry(title)
+            body_converted = markdowner.convert(body)
+         
             return render(request, "encyclopedia/entry_page.html", {
                 "title": title,
-                "body": util.get_entry(title)
+                "body_converted": body_converted,
+                "body": body
             })
-                        
+        
+        # If empty field, render edit page again.                
         else:
             return render(request, "encyclopedia/edit_page.html", {
                 "form": form,
                 "title": title
         })
+
+    # If not entered from entry page, show error    
     error_message = "Nothing to edit"
     return error_page(request, error_message)
 
@@ -64,7 +82,6 @@ def edit_page(request):
 def results(request):
     # Get a query
     query = request.GET.get('q')
-    query = query.lower()
     
     # Get a list of entries
     entries = util.list_entries()
@@ -74,13 +91,12 @@ def results(request):
 
     # Iterate through entries to check if a query matches any entry
     for entry in entries:
-        entry = entry.lower()
         
         # If a query matches entry, go to entry's page
-        if query == entry:
+        if query.lower() == entry.lower():
             return entry_page(request, query) 
         # If a query is a substring of an entry, add an entry to a list of resutls       
-        elif query in entry:
+        elif query.lower() in entry.lower():
             result_list.append(entry)
     
     # Show a message if the list is empty

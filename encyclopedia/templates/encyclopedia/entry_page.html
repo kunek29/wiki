@@ -5,8 +5,8 @@
 {% endblock %}
 
 {% block body %}
-    <h1> {{ title }}</h1>
-    <div> {{ body }}</div>
+    
+    <div>{{ body_converted | safe }}</div>
     <form action="{% url 'wiki:entry_page' title %}" method="post">
        {% csrf_token %}
        <input hidden type="text" name="title" value="{{ title }}">
