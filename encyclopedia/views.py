@@ -1,21 +1,8 @@
 from django.shortcuts import render
 
-from . import util
-from django import forms
-from django.urls import reverse
-from django.http import HttpResponseRedirect
+from . import util, forms
 import random
 from markdown2 import Markdown
-
-
-class CreateEntryForm(forms.Form):
-    title = forms.CharField(label="New Title", widget=forms.TextInput)
-    content = forms.CharField(label="Content", widget=forms.Textarea)
-
-
-class ExistingEntryForm(forms.Form):
-    title = forms.CharField(label="Title", widget=forms.HiddenInput)
-    body = forms.CharField(label="Content", widget=forms.Textarea)
 
 
 def index(request):
@@ -26,46 +13,40 @@ def index(request):
 
 def entry_page(request, title):
     
-    # If clicked Edit, render edit_page.
-    if request.method == "POST":
+    # Check if entry exists within list of entries.
+    entries = util.list_entries()
+    if title not in entries:
+        
+        # If it doesn't, return error message.
+        return error_page(request, error_message="Entry doesn't exist.")
+
+    # Otherwise:
+    else:
+
+        # Convert markdown content to html  
+        markdowner = Markdown()
         body = util.get_entry(title)
-
-        return render(request, "encyclopedia/edit_page.html", {
+        body_converted = markdowner.convert(body)
+    
+        # Render entry page    
+        return render(request, "encyclopedia/entry_page.html", {
             "title": title,
-            "form": ExistingEntryForm(request.POST)
+            "body_converted": body_converted
         })
-    # Render entry page  
-    markdowner = Markdown()
-    body = util.get_entry(title)
-    body_converted = markdowner.convert(body)
-         
-    return render(request, "encyclopedia/entry_page.html", {
-        "title": title,
-        "body_converted": body_converted,
-        "body": body
-    })
 
 
-def edit_page(request):
+def edit_page(request, title):
 
     # If clicked Save button, save the entry and go to entry page.
     if request.method == "POST":
-        form = ExistingEntryForm(request.POST)
+        form = forms.ExistingEntryForm(request.POST)
 
         if form.is_valid():
             title = form.cleaned_data["title"]
             body = form.cleaned_data["body"]
             util.save_entry(title, body)
-
-            markdowner = Markdown()
-            body = util.get_entry(title)
-            body_converted = markdowner.convert(body)
          
-            return render(request, "encyclopedia/entry_page.html", {
-                "title": title,
-                "body_converted": body_converted,
-                "body": body
-            })
+            return entry_page(request, title)
         
         # If empty field, render edit page again.                
         else:
@@ -74,9 +55,17 @@ def edit_page(request):
                 "title": title
         })
 
-    # If not entered from entry page, show error    
-    error_message = "Nothing to edit"
-    return error_page(request, error_message)
+    # Make dictionary to fill form with initial values.  
+    initial_dict = {
+        "title": title,
+        "body": util.get_entry(title)
+    }
+
+    # Render edit page with a prepopulated form.
+    return render(request, "encyclopedia/edit_page.html", {
+        "title": title,
+        "form": forms.ExistingEntryForm(None, initial = initial_dict)
+    })
 
 
 def results(request):
@@ -92,18 +81,19 @@ def results(request):
     # Iterate through entries to check if a query matches any entry
     for entry in entries:
         
-        # If a query matches entry, go to entry's page
+        # If a query matches entry, go to entry's page (case insensitive)
         if query.lower() == entry.lower():
             return entry_page(request, query) 
-        # If a query is a substring of an entry, add an entry to a list of resutls       
+        
+        # If a query is a substring of an entry, add an entry to a list of resutls (case insensitive).     
         elif query.lower() in entry.lower():
             result_list.append(entry)
     
     # Show a message if the list is empty
     if len(result_list) == 0:
-        error_message = "No results. Try Again."
-        return error_page(request, error_message)
-    # Otherwise show a list of results
+        return error_page(request, error_message="No results. Try Again.")
+    
+    # Otherwise, render a list of results
     else:
         return render(request, "encyclopedia/results.html", {
             "entries": result_list
@@ -116,7 +106,7 @@ def create_page(request):
     if request.method == "POST":
 
         # Take in the data the user submitted and save it as form
-        form = CreateEntryForm(request.POST)
+        form = forms.CreateEntryForm(request.POST)
 
         # Check if form data is valid (server-side)
         if form.is_valid():
@@ -135,17 +125,17 @@ def create_page(request):
             
             # Otherwise, show an error message
             else:
-                error_message = "The Entry alredy exists"
-                return error_page(request, error_message)
+                return error_page(request, error_message="Can't create. The Entry alredy exists.")
         
-        # Return to form if invalid
+        # Return to existing form if imput invalid
         else:
             return render(request, "encyclopedia/create_page", {
                 "form": form
             })
     
+    # Render form to create an entry
     return render(request, "encyclopedia/create_page.html", {
-        "form": CreateEntryForm()
+        "form": forms.CreateEntryForm()
     })
 
 
@@ -157,10 +147,6 @@ def error_page(request, error_message):
 
 def random_entry(request):
 
-    entries = util.list_entries()
-    random_entry = random.choice(entries)
+    # Pick and render a random entry from a list of entries.
+    random_entry = random.choice(util.list_entries())
     return entry_page(request, random_entry)
-
-    
-
-                  
