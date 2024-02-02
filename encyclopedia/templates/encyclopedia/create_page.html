@@ -9,7 +9,7 @@
     <form action="{% url 'wiki:create_page' %}" method="post">
         {% csrf_token %}
         {{ form }}
-        <input type="submit">
+        <input type="submit" value="Save">
     </form>
     
 {% endblock %}

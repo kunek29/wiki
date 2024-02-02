@@ -1,5 +1,7 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 
+from django.urls import reverse
+from django.http import HttpResponseRedirect
 from . import util, forms
 import random
 from markdown2 import Markdown
@@ -42,11 +44,11 @@ def edit_page(request, title):
         form = forms.ExistingEntryForm(request.POST)
 
         if form.is_valid():
-            title = form.cleaned_data["title"]
+            cleaned_title = form.cleaned_data["title"]
             body = form.cleaned_data["body"]
-            util.save_entry(title, body)
+            util.save_entry(cleaned_title, body)
          
-            return entry_page(request, title)
+            return HttpResponseRedirect(reverse("wiki:entry_page", args=(title,)))
         
         # If empty field, render edit page again.                
         else:
@@ -83,7 +85,7 @@ def results(request):
         
         # If a query matches entry, go to entry's page (case insensitive)
         if query.lower() == entry.lower():
-            return entry_page(request, query) 
+            return HttpResponseRedirect(reverse("wiki:entry_page", args=(entry,)))
         
         # If a query is a substring of an entry, add an entry to a list of resutls (case insensitive).     
         elif query.lower() in entry.lower():
@@ -121,11 +123,11 @@ def create_page(request):
                 # If not, isolate content, save the entry and go to entry's page
                 content = form.cleaned_data['content']
                 util.save_entry(title, content)
-                return entry_page(request, title)
+                return HttpResponseRedirect(reverse("wiki:entry_page", args=(title,)))
             
             # Otherwise, show an error message
             else:
-                return error_page(request, error_message="Can't create. The Entry alredy exists.")
+                return error_page(request, error_message="Can't create. The entry already exists.")
         
         # Return to existing form if imput invalid
         else:
@@ -148,5 +150,6 @@ def error_page(request, error_message):
 def random_entry(request):
 
     # Pick and render a random entry from a list of entries.
-    random_entry = random.choice(util.list_entries())
-    return entry_page(request, random_entry)
+    title = random.choice(util.list_entries())
+    return HttpResponseRedirect(reverse("wiki:entry_page", args=(title,)))
+

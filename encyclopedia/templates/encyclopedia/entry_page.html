@@ -6,11 +6,11 @@
 
 {% block body %}
     
-    <div>{{ body_converted | safe }}</div>
+    <div id="entry">
+        <div>{{ body_converted | safe }}</div>
+    </div>
    
     <a href="{%url 'wiki:edit_page' title %}"><button>Edit</button></a>
     
-    
-
 {% endblock %}
 
